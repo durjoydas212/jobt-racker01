@@ -1,0 +1,586 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Tracker</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      input,
+      select,
+      textarea {
+        font-size: 16px !important;
+        padding: 12px !important;
+      }
+
+      .card {
+        border-radius: 12px;
+      }
+
+      h5 {
+        font-weight: 600;
+      }
+      .table-responsive {
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+
+  <body class="bg-light">
+    <div class="container mt-4">
+      <div class="card p-3 shadow-sm">
+        <h5 class="text-center pt-3 pb-3 fw-bold">Job Tracker</h5>
+
+        <input
+          id="jobNumber"
+          class="form-control mb-2"
+          placeholder="Job Number"
+        />
+
+        <select id="status" class="form-select mb-2" onchange="handleStatus()">
+          <option value="">Select Status</option>
+          <option value="Started">Started</option>
+          <option value="Incomplete">Incomplete</option>
+          <option value="Complete">Complete</option>
+        </select>
+
+        <!-- ================= STARTED ================= -->
+        <div id="startedSection" style="display: none">
+          <label>Walkthrough Approved?</label>
+
+          <select
+            id="walkthrough"
+            class="form-select mb-2"
+            onchange="handleWalkthrough()"
+          >
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+
+          <div id="startedDetails" style="display: none">
+            <textarea
+              id="notes"
+              class="form-control mb-2"
+              placeholder="Notes"
+            ></textarea>
+
+            <select id="tag1" class="form-select mb-2">
+              <option value="">Tag Type</option>
+              <option>Before</option>
+              <option>After</option>
+              <option>Issue</option>
+            </select>
+
+            <select id="tag2" class="form-select mb-2">
+              <option value="">Product</option>
+              <option>Window</option>
+              <option>Doors</option>
+              <option>Siding</option>
+              <option>Roof</option>
+              <option>Deck</option>
+              <option>Patio Door Wall</option>
+              <option>Other</option>
+            </select>
+
+            <input
+              type="file"
+              id="imageFile"
+              multiple
+              class="form-control mb-2"
+            />
+            <input
+              type="text"
+              id="imageTags"
+              placeholder="Enter tags (comma separated)"
+              class="w-100"
+            />
+          </div>
+        </div>
+
+        <!-- ================= INCOMPLETE ================= -->
+        <div id="incompleteSection" style="display: none">
+          <h6>TIME</h6>
+
+          <select id="timeNeeded" class="form-select mb-2">
+            <option value="">Time Needed</option>
+            <option>1 hr</option>
+            <option>2 hr</option>
+            <option>3 hr</option>
+            <option>4+ hr</option>
+          </select>
+
+          <select id="installers" class="form-select mb-2">
+            <option value="">Installers Needed</option>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+
+          <input
+            id="material"
+            class="form-control mb-2"
+            placeholder="Material Needed"
+          />
+
+          <textarea
+            id="incNotes"
+            class="form-control mb-2"
+            placeholder="Notes"
+          ></textarea>
+
+          <select id="incTag1" class="form-select mb-2">
+            <option>Before</option>
+            <option>After</option>
+            <option>Issue</option>
+          </select>
+
+          <select id="incTag2" class="form-select mb-2">
+            <option>Window</option>
+            <option>Doors</option>
+            <option>Siding</option>
+            <option>Roof</option>
+            <option>Deck</option>
+            <option>Patio Door Wall</option>
+            <option>Other</option>
+          </select>
+
+          <input type="file" id="incImage" class="form-control mb-2" multiple />
+          <input
+            type="text"
+            id="incTags"
+            placeholder="Enter tags (comma separated)"
+            class="w-100"
+          />
+        </div>
+
+        <!-- ================= COMPLETE ================= -->
+        <div id="completeSection" style="display: none">
+          <select id="cos" class="form-select mb-2">
+            <option value="">COS Signed?</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+
+          <select id="payment" class="form-select mb-2">
+            <option value="">Payment Collected?</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+
+          <select id="finance" class="form-select mb-2">
+            <option value="">Finance Paperwork Signed?</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+
+          <input
+            id="referral"
+            class="form-control mb-2"
+            placeholder="Referral"
+          />
+
+          <input
+            id="installersComplete"
+            class="form-control mb-2"
+            placeholder="Installers (comma separated)"
+          />
+
+          <textarea
+            id="completeNotes"
+            class="form-control mb-2"
+            placeholder="Notes"
+          ></textarea>
+
+          <input
+            type="file"
+            id="completeImage"
+            class="form-control mb-2"
+            multiple
+          />
+          <input
+            type="text"
+            id="comTags"
+            placeholder="Enter tags (comma separated)"
+            class="w-100"
+          />
+        </div>
+
+        <button
+          onclick="saveJob()"
+          class="btn btn-primary w-100 mt-3 fw-bold fs-5"
+        >
+          Submit
+        </button>
+      </div>
+      <hr />
+
+      <h6 class="fs-5 fw-bold pb-3">Job History :</h6>
+      <div id="history" class="mt-2"></div>
+    </div>
+
+    <script>
+      let lastStatuses = {};
+      let lastData = "";
+      let soundEnabled = false;
+
+      document.addEventListener("click", () => {
+        soundEnabled = true;
+      });
+      // ================= STATUS HANDLER =================
+      function handleStatus() {
+        const status = document.getElementById("status").value;
+
+        document.getElementById("startedSection").style.display =
+          status === "Started" ? "block" : "none";
+
+        document.getElementById("incompleteSection").style.display =
+          status === "Incomplete" ? "block" : "none";
+
+        document.getElementById("completeSection").style.display =
+          status === "Complete" ? "block" : "none";
+      }
+
+      function handleWalkthrough() {
+        const value = document.getElementById("walkthrough").value;
+
+        document.getElementById("startedDetails").style.display =
+          value === "yes" || value === "no" ? "block" : "none";
+      }
+
+      // ================= IMAGE UPLOAD =================
+      async function uploadImage(file) {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const res = await fetch("http://localhost:5000/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          alert("Image upload failed");
+          return "";
+        }
+
+        const data = await res.json();
+
+        return data.filePath;
+      }
+      async function uploadImages(files) {
+        const uploaded = [];
+
+        for (let file of files) {
+          const formData = new FormData();
+          formData.append("image", file);
+
+          const res = await fetch("http://localhost:5000/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            alert("Image upload failed");
+            continue;
+          }
+
+          const data = await res.json();
+          uploaded.push(data.filePath);
+        }
+
+        return uploaded;
+      }
+      // ================= SAVE JOB =================
+      async function saveJob() {
+        try {
+          const job_number = document.getElementById("jobNumber").value;
+          const status = document.getElementById("status").value;
+
+          if (!job_number || !status) {
+            alert("Fill job number and status");
+            return;
+          }
+
+          const res = await fetch(`http://localhost:5000/jobs/${job_number}`);
+          const existingJobs = await res.json();
+
+          // prevent duplicate status
+          const alreadyExists = existingJobs.find((j) => j.status === status);
+
+          if (alreadyExists) {
+            alert("This status already exists for this job!");
+            return;
+          }
+
+          let data = {};
+          let notes = "";
+
+          // STARTED
+          if (status === "Started") {
+            const files = document.getElementById("imageFile").files;
+            const images = files.length ? await uploadImages(files) : [];
+
+            const tags = document
+              .getElementById("imageTags")
+              .value.split(",")
+              .map((t) => t.trim());
+
+            notes = document.getElementById("notes").value;
+
+            data = {
+              walkthrough: document.getElementById("walkthrough").value,
+              tag1: document.getElementById("tag1").value,
+              tag2: document.getElementById("tag2").value,
+              images: images,
+              tags: tags,
+            };
+          }
+
+          // INCOMPLETE
+          if (status === "Incomplete") {
+            const files = document.getElementById("incImage").files;
+            const images = files.length ? await uploadImages(files) : [];
+
+            const tags = document
+              .getElementById("incTags")
+              .value.split(",")
+              .filter((t) => t.trim() !== "")
+              .map((t) => t.trim());
+
+            notes = document.getElementById("incNotes").value;
+
+            data = {
+              time: document.getElementById("timeNeeded").value,
+              installers: document.getElementById("installers").value,
+              material: document.getElementById("material").value,
+              tag1: document.getElementById("incTag1").value,
+              tag2: document.getElementById("incTag2").value,
+              images: images,
+              tags: tags,
+            };
+          }
+          console.log("INCOMPLETE DATA:", data);
+
+          // COMPLETE
+          if (status === "Complete") {
+            const files = document.getElementById("completeImage").files;
+            const images = files.length ? await uploadImages(files) : [];
+
+            const tags = document
+              .getElementById("comTags")
+              .value.split(",")
+              .filter((t) => t.trim() !== "")
+              .map((t) => t.trim());
+
+            notes = document.getElementById("completeNotes").value;
+
+            data = {
+              cos: document.getElementById("cos").value,
+              payment: document.getElementById("payment").value,
+              finance: document.getElementById("finance").value,
+              referral: document.getElementById("referral").value,
+              installers: document.getElementById("installersComplete").value,
+              images: images,
+              tags: tags,
+            };
+          }
+
+          await fetch("http://localhost:5000/jobs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_number, status, notes, data }),
+          });
+
+          alert("Saved successfully!");
+
+          // reset other fields
+          document.getElementById("status").value = "";
+
+          document.getElementById("notes").value = "";
+          document.getElementById("incNotes").value = "";
+          document.getElementById("completeNotes").value = "";
+
+          document.getElementById("imageFile").value = "";
+          document.getElementById("incImage").value = "";
+          document.getElementById("completeImage").value = "";
+
+          handleStatus();
+
+          loadHistory();
+
+          setInterval(() => {
+            loadHistory();
+          }, 5000);
+        } catch (err) {
+          console.error(err);
+          alert("Error saving job");
+        }
+      }
+
+      // ================= LOAD HISTORY =================
+      async function loadHistory() {
+        const job_number = document.getElementById("jobNumber").value;
+        let url = "http://localhost:5000/jobs";
+
+        if (job_number) {
+          url = `http://localhost:5000/jobs/${job_number}`;
+        }
+
+        const res = await fetch(`http://localhost:5000/jobs/${job_number}`);
+        const jobs = await res.json();
+
+        const newData = JSON.stringify(jobs);
+
+        // If no change → do nothing
+        if (newData === lastData) return;
+
+        // update snapshot
+        lastData = newData;
+
+        // sort latest first
+        jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        const container = document.getElementById("history");
+        container.innerHTML = "";
+
+        // show ALL history
+        jobs.forEach((job, index) => {
+          const d = job.data || {};
+          let tags = [];
+
+          if (d.tags) {
+            tags = Array.isArray(d.tags) ? d.tags : d.tags.split(",");
+          }
+
+          const jobId = job.job_number;
+          const currentStatus = job.status;
+
+          // notification only for latest item
+          if (
+            lastStatuses[jobId] !== undefined &&
+            lastStatuses[jobId] !== currentStatus &&
+            index === 0
+          ) {
+            if (
+              lastStatuses[jobId] !== undefined &&
+              lastStatuses[jobId] !== currentStatus
+            ) {
+              if (currentStatus === "Approved") {
+                showNotification(`Job #${job.job_number} Approved`, "success");
+              }
+
+              if (currentStatus === "Declined") {
+                showNotification(`Job #${job.job_number} Declined`, "danger");
+              }
+            }
+          }
+
+          lastStatuses[jobId] = currentStatus;
+
+          const date = new Date(job.created_at).toLocaleString("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+
+          const statusColor =
+            job.status === "Approved"
+              ? "green"
+              : job.status === "Incomplete" && index === 0
+                ? "orange"
+                : "gray";
+
+          const div = document.createElement("div");
+          div.className = "card p-3 mb-3 border-2";
+          div.style.borderColor = statusColor;
+
+          div.innerHTML = `
+    <strong>Job #:</strong> ${job.job_number} <br>
+    <strong>Status:</strong> ${job.status} <br>
+    <strong>Admin Status:</strong>
+${
+  job.status === "Approved"
+    ? '<div class="bg-success text-white text-center rounded p-1">Approved</div>'
+    : job.status === "Declined"
+      ? '<div class="bg-danger text-white text-center rounded p-1">Declined</div>'
+      : '<div class="bg-warning text-dark text-center rounded p-1">Pending</div>'
+}
+    <br>
+    <strong>Notes:</strong> ${job.notes || "-"} <br>
+    <strong>Time:</strong> ${d.time || "-"} <br>
+    <strong>Material:</strong> ${d.material || "-"} <br>
+    <strong>Date:</strong> ${date} <br><br>
+    ${
+      d.images
+        ? d.images
+            .map(
+              (img, i) => `
+            <div style="display:inline-block;margin:5px;">
+              <img src="http://localhost:5000${img}" width="200"><br>
+              <strong
+              >${tags[i] ? tags[i].trim() : ""}</strong>
+            </div>
+          `,
+            )
+            .join("")
+        : ""
+    }
+  `;
+
+          container.appendChild(div);
+        });
+      }
+
+      // notification
+      function showNotification(message, type = "info") {
+        const div = document.createElement("div");
+
+        div.innerHTML = message;
+        div.style.position = "fixed";
+        div.style.top = "20px";
+        div.style.right = "20px";
+        div.style.padding = "12px 20px";
+        div.style.borderRadius = "8px";
+        div.style.color = "#fff";
+        div.style.fontWeight = "bold";
+        div.style.zIndex = "9999";
+
+        //  COLORS
+        if (type === "success")
+          div.style.background = "#28a745"; // green
+        else if (type === "danger")
+          div.style.background = "#dc3545"; // red
+        else div.style.background = "#333";
+
+        document.body.appendChild(div);
+
+        if (soundEnabled) {
+          const audio = new Audio(
+            "https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3",
+          );
+          audio.play().catch(() => {});
+        }
+        let lastData = "";
+
+        async function loadHistory() {
+          const res = await fetch(`http://localhost:5000/jobs/${job_number}`);
+          const jobs = await res.json();
+
+          const newData = JSON.stringify(jobs);
+
+          if (newData === lastData) return; // no change → no reload
+
+          lastData = newData;
+
+          renderHistory(jobs);
+        }
+      }
+
+      // OPTIONAL AUTO LOAD
+
+      loadHistory();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,344 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      input,
+      select,
+      textarea {
+        font-size: 16px !important;
+        padding: 12px !important;
+      }
+
+      .card {
+        border-radius: 12px;
+      }
+
+      h5 {
+        font-weight: 600;
+      }
+      .table-responsive {
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+
+  <body class="bg-light">
+    <div class="container mt-4">
+      <h4>Admin Dashboard</h4>
+
+      <div class="row mt-3">
+        <div class="col-4">
+          <div class="card p-3 text-center shadow-sm">
+            <h6>Total Jobs</h6>
+            <h4 id="totalJobs">0</h4>
+          </div>
+        </div>
+
+        <div class="col-4">
+          <div class="card p-3 text-center shadow-sm">
+            <h6>Pending</h6>
+            <h4 id="pendingJobs">0</h4>
+          </div>
+        </div>
+
+        <div class="col-4">
+          <div class="card p-3 text-center shadow-sm">
+            <h6>Approved</h6>
+            <h4 id="approvedJobs">0</h4>
+          </div>
+        </div>
+      </div>
+
+      <input
+        type="text"
+        id="searchInput"
+        class="form-control mb-3 mt-4 shadow-sm"
+        placeholder="Search by Job Number..."
+        onkeyup="filterJobs()"
+      />
+
+      <table class="table table-bordered mt-3">
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th colspan="2">Details</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="jobTable"></tbody>
+      </table>
+
+      <div
+        id="lightbox"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+        "
+      >
+        <img
+          id="lightbox-img"
+          style="max-width: 90%; max-height: 90%; border-radius: 10px"
+        />
+      </div>
+    </div>
+
+    <script>
+      let allJobs = [];
+      let currentPage = 1;
+      const rowsPerPage = 10;
+      let lastJobs = [];
+      let soundEnabled = false;
+
+      document.addEventListener("click", () => {
+        soundEnabled = true;
+      });
+
+      // click function
+      function openLightbox(src) {
+        const box = document.getElementById("lightbox");
+        const img = document.getElementById("lightbox-img");
+
+        img.src = src;
+        box.style.display = "flex";
+      }
+
+      function closeLightbox() {
+        document.getElementById("lightbox").style.display = "none";
+      }
+
+      document
+        .getElementById("lightbox")
+        .addEventListener("click", closeLightbox);
+      // ================= LOAD JOBS =================
+      async function loadJobs() {
+        const res = await fetch("http://localhost:5000/jobs");
+        const newJobs = await res.json();
+
+        // detect new jobs
+        if (lastJobs.length > 0) {
+          newJobs.forEach((job) => {
+            const exists = lastJobs.find((j) => j.id === job.id);
+
+            if (!exists) {
+              showNotification(`New Job #${job.job_number}`);
+            }
+
+            if (exists && exists.status !== job.status) {
+              if (job.status === "Approved") {
+                showNotification(`Job #${job.job_number} Approved`, "success");
+              }
+
+              if (job.status === "Declined") {
+                showNotification(`Job #${job.job_number} Declined`, "danger");
+              }
+            }
+          });
+        }
+
+        lastJobs = newJobs;
+        allJobs = newJobs;
+
+        filterJobs(); //  always render through filter
+      }
+
+      // ================= FILTER =================
+      function filterJobs() {
+        const search = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+
+        let filtered = allJobs;
+
+        if (search) {
+          filtered = allJobs.filter((job) =>
+            String(job.job_number || "")
+              .toLowerCase()
+              .includes(search),
+          );
+        }
+
+        renderTable(filtered);
+      }
+
+      // ================= RENDER TABLE =================
+      function renderTable(jobs) {
+        const table = document.getElementById("jobTable");
+        table.innerHTML = "";
+
+        let total = jobs.length;
+        let approved = 0;
+        let pending = 0;
+
+        jobs.forEach((job) => {
+          if (job.status === "Approved") approved++;
+          else pending++;
+
+          const d = job.data || {};
+          let images = [];
+
+          if (d.images) {
+            images = Array.isArray(d.images) ? d.images : d.images.split(",");
+          }
+          let tags = [];
+          if (d.tags) {
+            tags = Array.isArray(d.tags) ? d.tags : d.tags.split(",");
+          }
+          const date = new Date(job.created_at).toLocaleString("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+
+          let actionHTML = "";
+
+          if (job.status === "Approved") {
+            actionHTML = `<button class="btn btn-secondary btn-sm" disabled>Approved</button>`;
+          } else if (job.status === "Declined") {
+            actionHTML = `<button class="btn btn-secondary btn-sm" disabled>Declined</button>`;
+          } else {
+            actionHTML = `
+    <button onclick="approve(${job.id})" class="btn btn-success btn-sm mb-1">Approve</button>
+    <br>
+    <button onclick="decline(${job.id})" class="btn btn-danger btn-sm mt-1">Decline</button>
+  `;
+          }
+
+          const row = document.createElement("tr");
+          row.className =
+            job.status === "Approved"
+              ? "table-success"
+              : job.status === "Declined"
+                ? "table-danger"
+                : "";
+
+          row.innerHTML = `
+      <td>${job.job_number}</td>
+      <td>${job.status}</td>
+      <td>${job.notes || "-"}</td>
+      <td colspan="2">
+  <strong>DATE:</strong> ${date}<br>
+
+  ${Object.entries(d)
+    .filter(([key]) => !["images", "tags"].includes(key))
+    .map(
+      ([key, val]) =>
+        `<strong>${key.replace(/_/g, " ").toUpperCase()}:</strong> ${val || "-"}<br>`,
+    )
+    .join("")}
+
+  ${
+    images.length
+      ? `
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:10px;">
+        ${images
+          .map(
+            (img, i) => `
+            <div style="text-align:center;">
+              
+                   <img src="http://localhost:5000${img}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;"
+     onclick="openLightbox('http://localhost:5000${img}')"
+     style="cursor:pointer;">
+              <small>${tags[i] || ""}</small>
+            </div>
+          `,
+          )
+          .join("")}
+      </div>
+    `
+      : ""
+  }
+</td>
+      
+      <td>${actionHTML}</td>
+    `;
+
+          table.appendChild(row);
+        });
+
+        document.getElementById("totalJobs").innerText = total;
+        document.getElementById("approvedJobs").innerText = approved;
+        document.getElementById("pendingJobs").innerText = pending;
+      }
+
+      // ================= APPROVE =================
+      async function approve(jobId) {
+        await fetch(`http://localhost:5000/jobs/${jobId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: "Approved",
+          }),
+        });
+
+        loadJobs();
+      }
+
+      // ================= DECLINE =================
+      async function decline(jobId) {
+        await fetch(`http://localhost:5000/jobs/${jobId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "Declined" }),
+        });
+
+        loadJobs();
+      }
+
+      // ================= NOTIFICATION =================
+      function showNotification(message, type = "info") {
+        const div = document.createElement("div");
+
+        div.innerHTML = message;
+        div.style.position = "fixed";
+        div.style.top = "20px";
+        div.style.right = "20px";
+        div.style.padding = "12px 20px";
+        div.style.borderRadius = "8px";
+        div.style.color = "#fff";
+        div.style.fontWeight = "bold";
+        div.style.zIndex = "9999";
+
+        //  COLORS
+        if (type === "success")
+          div.style.background = "#28a745"; // green
+        else if (type === "danger")
+          div.style.background = "#dc3545"; // red
+        else div.style.background = "#333";
+
+        document.body.appendChild(div);
+
+        if (soundEnabled) {
+          const audio = new Audio(
+            "https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3",
+          );
+          audio.play().catch(() => {});
+        }
+        setTimeout(() => div.remove(), 3000);
+      }
+
+      // ================= INIT =================
+      loadJobs();
+      setInterval(loadJobs, 5000);
+    </script>
+  </body>
+</html>
